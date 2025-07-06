@@ -1,0 +1,10 @@
+*.cmd
+*.o
+*.order
+*.ko
+*.mod
+*.mod.c
+*.symvers
+.vscode/
+.cache/
+/client/build/
