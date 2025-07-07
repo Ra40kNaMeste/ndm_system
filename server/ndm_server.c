@@ -29,25 +29,27 @@ int perform_action(const char *action, int arg1, int arg2) {
 
 //Функция отправки ответа от сервера
 static int reply(const char* json, struct genl_info *info){
+    pr_info("Отправляется %s", json);
     struct sk_buff *reply_skb;
     void *reply_hdr;
     int ret;
 
     // Создаем буфер для ответа
-    reply_skb = genlmsg_new(NLMSG_DEFAULT_SIZE, GFP_KERNEL);
+    reply_skb = genlmsg_new(NLMSG_GOODSIZE, GFP_KERNEL);
     if (!reply_skb) {
         pr_err("NDM_SERVER: Error allocating memory for response\n");
         return -ENOMEM;
     }
-
+    pr_info("Отправляется 2 %s", json);
     // Формируем заголовок ответа
-    reply_hdr = genlmsg_put(reply_skb, 0, info->snd_seq, &ndm_family, 0, info->genlhdr->cmd);
+    reply_hdr = genlmsg_put(reply_skb, info->snd_portid, info->snd_seq, &ndm_family, 0, info->genlhdr->cmd);
     if (!reply_hdr) {
+        genlmsg_cancel(reply_skb, reply_hdr);
         nlmsg_free(reply_skb);
         pr_err("NDM_SERVER: Error creating response header\n");
         return -ENOMEM;
     }
-
+    pr_info("Отправляется 3 %s", json);
     // Добавляем атрибуты
     ret = nla_put_string(reply_skb, DATA, json);
     if (ret) {
@@ -56,11 +58,12 @@ static int reply(const char* json, struct genl_info *info){
         pr_err("NDM_SERVER: Error added attributes\n");
         return ret;
     }
-
+    pr_info("Отправляется 4 %s", json);
     // Завершаем формирование сообщения
     genlmsg_end(reply_skb, reply_hdr);
 
     // Отправляем ответ клиенту (Unicast)
+    pr_info("Отправлено %s", json);
     ret = genlmsg_unicast(genl_info_net(info), reply_skb, info->snd_portid);
     if (ret) {
         pr_err("NDL_SERVER: Error sending response: %d\n", ret);
@@ -115,7 +118,6 @@ int parse_json_message(const char *input, char *action, int *arg1, int *arg2)
     if (sscanf(buf,
                "{\"action\":\"%3[^\"]\",\"argument_1\":%d,\"argument_2\":%d}",
                action, arg1, arg2) == 3) {
-        pr_info("Ok");
         return 0;
     }
 
@@ -145,6 +147,7 @@ int parse_json_message(const char *input, char *action, int *arg1, int *arg2)
         action[3] = '\0';
 
         int res = perform_action(action, arg1, arg2);
+        pr_info("NDM_SERVER: res = %d\n", res);
         return reply_result(res, info);
     }
     return reply_error("NDM_SERVER: Missing required attribute 'Data'", info);
@@ -171,18 +174,7 @@ static struct genl_family ndm_family = {
     .maxattr = NDS_SERVER_A_MAX,
 };
 
-
-static ssize_t ping_store(struct kobject *kobj, struct kobj_attribute *attr,
-			  const char *buf, size_t cnt)
-{
-	int max = cnt;
-	//calculate_handler(buf, max);
-
-	return max;
-}
-
 static struct kobject *kobj;
-static struct kobj_attribute ping_attr = __ATTR_WO(ping);
 
 static int __init init_ndm_server(void)
 {

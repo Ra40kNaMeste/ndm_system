@@ -71,6 +71,7 @@ public:
 
         nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM,
             [](struct nl_msg *msg, void *arg) -> int {
+                std::cout<<"message";
                 std::string* out = static_cast<std::string*>(arg);
 
                 struct nlmsghdr *nlh = nlmsg_hdr(msg);
@@ -94,11 +95,13 @@ public:
             return 4;
         }
         // ждём ответ
-        if (nl_recvmsgs(sock.get(), cb) < 0) {
-            nl_cb_put(cb);
-            return 6;
+        while (result_data == "") {
+            if (nl_recvmsgs(sock.get(), cb) < 0) {
+                nl_cb_put(cb);
+                return 6;
+            }
+            
         }
-
         nl_cb_put(cb);
         res = result_data;
         return 0;
