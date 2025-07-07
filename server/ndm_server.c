@@ -137,11 +137,13 @@ int parse_json_message(const char *input, char *action, int *arg1, int *arg2)
         pr_info("NDM_SERVER: Message: %s\n", msg);
 
         // Ручной парсинг json
-        char action[3]; //Т.к. add sub и mul имеют 3 символа
+        char action[4]; //Т.к. add sub и mul имеют 3 символа + \0
         int arg1, arg2;
-        if (parse_json_message(msg, action, &arg1, &arg2)) {
+        if (parse_json_message(msg, action, &arg1, &arg2) != 0) {
             return -EINVAL;
         }
+        action[3] = '\0';
+
         int res = perform_action(action, arg1, arg2);
         return reply_result(res, info);
     }
